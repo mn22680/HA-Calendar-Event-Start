@@ -1,0 +1,286 @@
+blueprint:
+  name: Calendar text command (pause + work-meeting delay)
+  description: >-
+    Runs actions when an event whose title contains selected text starts or ends.
+    An optional pause helper immediately cancels the current run and executes the
+    pause actions. When enabled, work-calendar events containing configured words
+    postpone the start until the meeting has ended plus a safety buffer.
+
+    Examples: [Rosie] Vacuum, [Mower] Mow Front Yard, [Sprinklers] Water.
+
+    Create one automation from this blueprint for each calendar command. Each
+    automation can run completely different actions, so the blueprint works with
+    vacuums, lawn mowers, irrigation, lights, scenes, scripts, and other devices.
+
+    For voice control, expose the selected input_boolean pause helper to Google
+    Assistant and use a Google Home routine to turn it on for your chosen phrase.
+    Turning the helper off can optionally resume the activity, but only while the
+    matching schedule event is still active.
+  domain: automation
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    schedule:
+      name: Schedule event
+      icon: mdi:calendar-clock
+      input:
+        schedule_calendar:
+          name: Schedule calendar
+          description: For example, Weekly Family Schedule.
+          selector:
+            entity:
+              filter:
+                domain: calendar
+        title_text:
+          name: Text to find in the event title
+          description: >-
+            Case-insensitive. Use [Mower] Mow Front Yard to match only that
+            command, or [Mower] to match every event assigned to the mower.
+          default: "[Device] Action"
+          selector:
+            text: {}
+        exact_title_match:
+          name: Require the whole title to match
+          description: Otherwise the title only needs to contain the text above.
+          default: false
+          selector:
+            boolean: {}
+
+    actions_section:
+      name: Actions
+      icon: mdi:play-circle-outline
+      input:
+        start_actions:
+          name: Start actions
+          description: Actions to run when the matching calendar event begins.
+          selector:
+            action: {}
+        end_actions:
+          name: End actions
+          description: >-
+            Optional. Choose the device's stop, pause, dock, turn-off, or other
+            end-of-event action.
+          default: []
+          selector:
+            action: {}
+
+    pause_section:
+      name: Pause / kill control
+      icon: mdi:stop-circle-outline
+      input:
+        pause_helper:
+          name: Pause helper
+          description: >-
+            Select an input_boolean for this command/device. Turning it on cancels
+            the active run, performs the pause actions, and blocks scheduled starts
+            until it is turned off.
+          selector:
+            entity:
+              filter:
+                domain: input_boolean
+        pause_actions:
+          name: Pause / kill actions
+          description: >-
+            For example vacuum.pause, lawn_mower.pause, switch.turn_off, or a script.
+          default: []
+          selector:
+            action: {}
+        resume_when_helper_turns_off:
+          name: Resume when pause is turned off
+          description: >-
+            Runs the resume actions only if the matching schedule event is still active.
+          default: false
+          selector:
+            boolean: {}
+        resume_actions:
+          name: Resume actions
+          description: Optional actions to continue the activity after unpausing.
+          default: []
+          selector:
+            action: {}
+
+    meeting_section:
+      name: Work-meeting delay
+      icon: mdi:account-clock-outline
+      input:
+        delay_for_work_meeting:
+          name: Delay if Work Meeting
+          description: >-
+            If a matching work event is active, wait for its end and then add the
+            safety buffer. Consecutive/overlapping meetings are checked again.
+          default: false
+          selector:
+            boolean: {}
+        work_calendar:
+          name: Work calendar
+          description: For example, NoonanFilms.com. Ignored when delay is disabled.
+          selector:
+            entity:
+              filter:
+                domain: calendar
+        meeting_keywords:
+          name: Work meeting title words
+          description: Comma-separated and case-insensitive.
+          default: "Zoom, Meeting, Call, Teams, Google Meet"
+          selector:
+            text:
+              multiline: false
+        meeting_buffer_minutes:
+          name: Minutes to wait after a meeting
+          default: 30
+          selector:
+            number:
+              min: 0
+              max: 180
+              step: 5
+              unit_of_measurement: min
+              mode: slider
+
+trigger_variables:
+  schedule_calendar_var: !input schedule_calendar
+  pause_helper_var: !input pause_helper
+
+triggers:
+  - trigger: calendar
+    entity_id: !input schedule_calendar
+    event: start
+    id: schedule_start
+  - trigger: calendar
+    entity_id: !input schedule_calendar
+    event: end
+    id: schedule_end
+  - trigger: state
+    entity_id: !input pause_helper
+    to: "on"
+    id: pause_on
+  - trigger: state
+    entity_id: !input pause_helper
+    to: "off"
+    id: pause_off
+
+variables:
+  schedule_calendar: !input schedule_calendar
+  title_text: !input title_text
+  exact_title_match: !input exact_title_match
+  pause_helper: !input pause_helper
+  resume_when_helper_turns_off: !input resume_when_helper_turns_off
+  delay_for_work_meeting: !input delay_for_work_meeting
+  work_calendar: !input work_calendar
+  meeting_keywords_text: !input meeting_keywords
+  meeting_buffer_minutes: !input meeting_buffer_minutes
+  event_title: >-
+    {{ trigger.calendar_event.summary | default('', true) if
+       trigger.id in ['schedule_start', 'schedule_end'] else '' }}
+  title_matches: >-
+    {% set actual = event_title | trim | lower %}
+    {% set wanted = title_text | trim | lower %}
+    {{ wanted | length > 0 and
+       (actual == wanted if exact_title_match else wanted in actual) }}
+
+conditions:
+  # Keeping this as a top-level condition is important in restart mode: an
+  # unrelated family-calendar event must not interrupt an active command.
+  - condition: template
+    value_template: >-
+      {{ trigger.id in ['pause_on', 'pause_off'] or title_matches }}
+
+actions:
+  - choose:
+      - conditions: "{{ trigger.id == 'pause_on' }}"
+        sequence:
+          - sequence: !input pause_actions
+          - stop: Activity paused or killed by the pause helper
+
+      - conditions: >-
+          {{ trigger.id == 'pause_off' and resume_when_helper_turns_off }}
+        sequence:
+          - action: calendar.get_events
+            target:
+              entity_id: !input schedule_calendar
+            data:
+              start_date_time: "{{ now() - timedelta(days=1) }}"
+              end_date_time: "{{ now() + timedelta(days=1) }}"
+            response_variable: schedule_events
+          - variables:
+              matching_schedule_active: >-
+                {% set ns = namespace(found=false) %}
+                {% set wanted = title_text | trim | lower %}
+                {% for event in schedule_events.get(schedule_calendar, {}).get('events', []) %}
+                  {% set actual = event.summary | default('', true) | trim | lower %}
+                  {% set matched = actual == wanted if exact_title_match else wanted in actual %}
+                  {% set starts = as_datetime(event.start, none) %}
+                  {% set ends = as_datetime(event.end, none) %}
+                  {% if wanted | length > 0 and matched and starts is not none and
+                        ends is not none and starts <= now() and now() < ends %}
+                    {% set ns.found = true %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.found }}
+          - condition: template
+            value_template: "{{ matching_schedule_active }}"
+          - sequence: !input resume_actions
+          - stop: Resume handling complete
+
+      - conditions: >-
+          {{ trigger.id == 'schedule_end' and title_matches }}
+        sequence:
+          - sequence: !input end_actions
+          - stop: Matching calendar event ended
+
+      - conditions: >-
+          {{ trigger.id == 'schedule_start' and title_matches }}
+        sequence:
+          - condition: template
+            value_template: "{{ not is_state(pause_helper, 'on') }}"
+
+          - if:
+              - condition: template
+                value_template: "{{ delay_for_work_meeting }}"
+            then:
+              - repeat:
+                  sequence:
+                    - action: calendar.get_events
+                      target:
+                        entity_id: !input work_calendar
+                      data:
+                        start_date_time: "{{ now() - timedelta(days=1) }}"
+                        end_date_time: "{{ now() + timedelta(days=1) }}"
+                      response_variable: work_events
+                    - variables:
+                        active_meeting_end: >-
+                          {% set ns = namespace(latest=none) %}
+                          {% set words = meeting_keywords_text.lower().split(',')
+                             | map('trim') | reject('eq', '') | list %}
+                          {% for event in work_events.get(work_calendar, {}).get('events', []) %}
+                            {% set summary = event.summary | default('', true) | lower %}
+                            {% set starts = as_datetime(event.start, none) %}
+                            {% set ends = as_datetime(event.end, none) %}
+                            {% set kw = namespace(found=false) %}
+                            {% for word in words %}
+                              {% if word in summary %}{% set kw.found = true %}{% endif %}
+                            {% endfor %}
+                            {% if kw.found and starts is not none and ends is not none and
+                                  starts <= now() and now() < ends and
+                                  (ns.latest is none or ends > ns.latest) %}
+                              {% set ns.latest = ends %}
+                            {% endif %}
+                          {% endfor %}
+                          {{ ns.latest.isoformat() if ns.latest is not none else '' }}
+                    - if:
+                        - condition: template
+                          value_template: "{{ active_meeting_end | length > 0 }}"
+                      then:
+                        - delay: >-
+                            {% set target = as_datetime(active_meeting_end) +
+                               timedelta(minutes=meeting_buffer_minutes | int(30)) %}
+                            {{ [0, (target - now()).total_seconds()] | max }}
+                  until:
+                    - condition: template
+                      value_template: "{{ active_meeting_end | length == 0 }}"
+
+          - condition: template
+            value_template: "{{ not is_state(pause_helper, 'on') }}"
+          - sequence: !input start_actions
+
+mode: restart
+max_exceeded: silent
