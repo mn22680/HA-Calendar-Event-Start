@@ -114,6 +114,19 @@ scheduled start action. The blueprint uses Home Assistant's modern `tts.speak`
 action, making it suitable for Google/Nest speakers and other supported media
 players.
 
+## Optional feature sections
+
+Pause/Kill, Work-meeting delay, Device status checks, and Announcements are
+optional, collapsed sections. Expand only the feature you want and turn on its
+**Enable** switch. Disabled sections are ignored by the automation and use safe
+placeholder defaults where Home Assistant requires a syntactically valid entity.
+
+Home Assistant's blueprint editor does not currently support dynamically hiding
+individual fields when a Boolean input changes. Collapsed sections are therefore
+used to keep disabled feature settings out of the way. The fields appear when a
+section is expanded, but they have no effect until that section's enable switch
+is turned on.
+
 ## Example: robot lawnmower
 
 - **Schedule calendar:** Weekly Family Schedule

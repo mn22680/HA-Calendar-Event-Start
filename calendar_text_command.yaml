@@ -1,9 +1,9 @@
 blueprint:
-  name: Calendar text command v1.2.0 (pause + work-meeting delay)
+  name: Calendar text command v1.3.0 (optional feature sections)
   author: mn22680
   source_url: https://github.com/mn22680/HA-Calendar-Event-Start/blob/main/calendar_text_command.yaml
   description: >-
-    **Version 1.2.0** — [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
+    **Version 1.3.0** — [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
 
     Runs actions when an event whose title contains selected text starts or ends.
     An optional pause helper immediately cancels the current run and executes the
@@ -93,13 +93,22 @@ blueprint:
     pause_section:
       name: Pause / kill control
       icon: mdi:stop-circle-outline
+      collapsed: true
       input:
+        enable_pause_control:
+          name: Enable Pause / Kill Control
+          description: >-
+            When disabled, the helper and all pause/resume actions are ignored.
+          default: false
+          selector:
+            boolean: {}
         pause_helper:
           name: Pause helper
           description: >-
             Select an input_boolean for this command/device. Turning it on cancels
             the active run, performs the pause actions, and blocks scheduled starts
             until it is turned off.
+          default: input_boolean.calendar_command_pause
           selector:
             entity:
               filter:
@@ -128,9 +137,10 @@ blueprint:
     meeting_section:
       name: Work-meeting delay
       icon: mdi:account-clock-outline
+      collapsed: true
       input:
         delay_for_work_meeting:
-          name: Delay if Work Meeting
+          name: Enable Work-meeting Delay
           description: >-
             If a matching work event is active, wait for its end and then add the
             safety buffer. Consecutive/overlapping meetings are checked again.
@@ -140,6 +150,7 @@ blueprint:
         work_calendar:
           name: Work calendar
           description: For example, NoonanFilms.com. Ignored when delay is disabled.
+          default: calendar.calendar_command_work
           selector:
             entity:
               filter:
@@ -318,7 +329,7 @@ blueprint:
       name: Notes, updates, and suggestions
       icon: mdi:github
       description: >-
-        **Version 1.2.0**
+        **Version 1.3.0**
 
         [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
 
@@ -348,16 +359,19 @@ triggers:
     entity_id: !input pause_helper
     to: "on"
     id: pause_on
+    enabled: !input enable_pause_control
   - trigger: state
     entity_id: !input pause_helper
     to: "off"
     id: pause_off
+    enabled: !input enable_pause_control
 
 variables:
   schedule_calendar: !input schedule_calendar
   title_text: !input title_text
   match_after_bracket: !input match_after_bracket
   exact_title_match: !input exact_title_match
+  enable_pause_control: !input enable_pause_control
   pause_helper: !input pause_helper
   resume_when_helper_turns_off: !input resume_when_helper_turns_off
   delay_for_work_meeting: !input delay_for_work_meeting
@@ -404,17 +418,18 @@ conditions:
   # unrelated family-calendar event must not interrupt an active command.
   - condition: template
     value_template: >-
-      {{ trigger.id in ['pause_on', 'pause_off'] or title_matches }}
+      {{ (enable_pause_control and trigger.id in ['pause_on', 'pause_off']) or title_matches }}
 
 actions:
   - choose:
-      - conditions: "{{ trigger.id == 'pause_on' }}"
+      - conditions: "{{ enable_pause_control and trigger.id == 'pause_on' }}"
         sequence:
           - sequence: !input pause_actions
           - stop: Activity paused or killed by the pause helper
 
       - conditions: >-
-          {{ trigger.id == 'pause_off' and resume_when_helper_turns_off }}
+          {{ enable_pause_control and trigger.id == 'pause_off' and
+             resume_when_helper_turns_off }}
         sequence:
           - action: calendar.get_events
             target:
@@ -460,7 +475,8 @@ actions:
           {{ trigger.id == 'schedule_start' and title_matches }}
         sequence:
           - condition: template
-            value_template: "{{ not is_state(pause_helper, 'on') }}"
+            value_template: >-
+              {{ not enable_pause_control or not is_state(pause_helper, 'on') }}
 
           - if:
               - condition: template
@@ -508,7 +524,8 @@ actions:
                       value_template: "{{ active_meeting_end | length == 0 }}"
 
           - condition: template
-            value_template: "{{ not is_state(pause_helper, 'on') }}"
+            value_template: >-
+              {{ not enable_pause_control or not is_state(pause_helper, 'on') }}
 
           - variables:
               device_is_disabled: >-
