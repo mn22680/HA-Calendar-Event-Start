@@ -57,12 +57,25 @@ automation**.
 ## Updates
 
 The blueprint includes its GitHub `source_url` and displays its current version
-in the description. Home Assistant does not currently auto-update imported
-blueprints. To install a newer release:
+at both the top and bottom of its configuration screen. Select **Check for an
+updated version** there to open this repository.
+
+Home Assistant does not currently auto-update imported blueprints. To install a
+newer release:
 
 1. Open **Settings → Automations & scenes → Blueprints**.
-2. Open this blueprint's three-dot menu.
-3. Select **Re-import blueprint**.
+2. Find **Calendar text command (pause + work-meeting delay)**.
+3. Open its three-dot menu.
+4. Select **Re-import blueprint** and confirm the replacement.
+5. Open automations created from the blueprint and confirm any newly added
+   options. Existing selections are normally retained, while new options use
+   their defaults.
+
+You can also paste the original import URL into **Import Blueprint** again:
+
+```text
+https://github.com/mn22680/HA-Calendar-Event-Start/blob/main/calendar_text_command.yaml
+```
 
 On GitHub, select **Watch → Custom → Releases** to receive release notifications.
 New features, suggestions, and problems can be posted in the repository's

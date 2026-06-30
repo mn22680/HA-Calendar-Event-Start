@@ -3,7 +3,7 @@ blueprint:
   author: mn22680
   source_url: https://github.com/mn22680/HA-Calendar-Event-Start/blob/main/calendar_text_command.yaml
   description: >-
-    Version 1.1.0
+    **Version 1.1.1** — [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
 
     Runs actions when an event whose title contains selected text starts or ends.
     An optional pause helper immediately cancels the current run and executes the
@@ -306,13 +306,16 @@ blueprint:
       name: Notes, updates, and suggestions
       icon: mdi:github
       description: >-
-        **Version 1.1.0**
+        **Version 1.1.1**
+
+        [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
 
         Source, release notes, and update notifications:
         https://github.com/mn22680/HA-Calendar-Event-Start
 
-        To update, open the blueprint's three-dot menu and select **Re-import
-        blueprint**. Please post suggestions and problems to:
+        To update, open **Settings → Automations & scenes → Blueprints**, open
+        this blueprint's three-dot menu, and select **Re-import blueprint**.
+        Please post suggestions and problems to:
         https://github.com/mn22680/HA-Calendar-Event-Start/issues
       input: {}
 
