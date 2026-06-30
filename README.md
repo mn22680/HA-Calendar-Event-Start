@@ -64,7 +64,7 @@ Home Assistant does not currently auto-update imported blueprints. To install a
 newer release:
 
 1. Open **Settings → Automations & scenes → Blueprints**.
-2. Find **Calendar text command (pause + work-meeting delay)**.
+2. Find **Calendar text command** (the current version is shown in its name).
 3. Open its three-dot menu.
 4. Select **Re-import blueprint** and confirm the replacement.
 5. Open automations created from the blueprint and confirm any newly added

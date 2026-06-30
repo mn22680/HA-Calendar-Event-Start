@@ -1,9 +1,9 @@
 blueprint:
-  name: Calendar text command (pause + work-meeting delay)
+  name: Calendar text command v1.1.2 (pause + work-meeting delay)
   author: mn22680
   source_url: https://github.com/mn22680/HA-Calendar-Event-Start/blob/main/calendar_text_command.yaml
   description: >-
-    **Version 1.1.1** — [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
+    **Version 1.1.2** — [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
 
     Runs actions when an event whose title contains selected text starts or ends.
     An optional pause helper immediately cancels the current run and executes the
@@ -306,7 +306,7 @@ blueprint:
       name: Notes, updates, and suggestions
       icon: mdi:github
       description: >-
-        **Version 1.1.1**
+        **Version 1.1.2**
 
         [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
 
