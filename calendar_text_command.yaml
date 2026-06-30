@@ -1,9 +1,9 @@
 blueprint:
-  name: Calendar text command v1.1.2 (pause + work-meeting delay)
+  name: Calendar text command v1.2.0 (pause + work-meeting delay)
   author: mn22680
   source_url: https://github.com/mn22680/HA-Calendar-Event-Start/blob/main/calendar_text_command.yaml
   description: >-
-    **Version 1.1.2** — [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
+    **Version 1.2.0** — [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
 
     Runs actions when an event whose title contains selected text starts or ends.
     An optional pause helper immediately cancels the current run and executes the
@@ -46,16 +46,28 @@ blueprint:
               filter:
                 domain: calendar
         title_text:
-          name: Text to find in the event title
+          name: Text to find in the selected part of the event title
           description: >-
-            Case-insensitive. Use [Mower] Mow Front Yard to match only that
-            command, or [Mower] to match every event assigned to the mower.
-          default: "[Device] Action"
+            Enter only the text inside the brackets (for example Rosie) or only
+            the text after the closing bracket (for example Vacuum). Do not enter
+            the brackets or both parts. Matching is case-insensitive.
+          default: "Device"
           selector:
             text: {}
+        match_after_bracket:
+          name: Search after the closing bracket instead
+          description: >-
+            Toggle off to search inside [brackets]. Toggle on to search only the
+            text after ]. Example: off searches Rosie in [Rosie] Vacuum; on
+            searches Vacuum.
+          default: false
+          selector:
+            boolean: {}
         exact_title_match:
-          name: Require the whole title to match
-          description: Otherwise the title only needs to contain the text above.
+          name: Require the whole selected part to match
+          description: >-
+            Otherwise the selected inside/after portion only needs to contain the
+            text above.
           default: false
           selector:
             boolean: {}
@@ -306,7 +318,7 @@ blueprint:
       name: Notes, updates, and suggestions
       icon: mdi:github
       description: >-
-        **Version 1.1.2**
+        **Version 1.2.0**
 
         [Check for an updated version](https://github.com/mn22680/HA-Calendar-Event-Start)
 
@@ -344,6 +356,7 @@ triggers:
 variables:
   schedule_calendar: !input schedule_calendar
   title_text: !input title_text
+  match_after_bracket: !input match_after_bracket
   exact_title_match: !input exact_title_match
   pause_helper: !input pause_helper
   resume_when_helper_turns_off: !input resume_when_helper_turns_off
@@ -372,8 +385,16 @@ variables:
   event_title: >-
     {{ trigger.calendar_event.summary | default('', true) if
        trigger.id in ['schedule_start', 'schedule_end'] else '' }}
+  selected_title_part: >-
+    {% set title = event_title | string %}
+    {% if match_after_bracket %}
+      {{ title.split(']', 1)[1] | trim if ']' in title else '' }}
+    {% else %}
+      {{ title.split('[', 1)[1].split(']', 1)[0] | trim
+         if '[' in title and ']' in title.split('[', 1)[1] else '' }}
+    {% endif %}
   title_matches: >-
-    {% set actual = event_title | trim | lower %}
+    {% set actual = selected_title_part | trim | lower %}
     {% set wanted = title_text | trim | lower %}
     {{ wanted | length > 0 and
        (actual == wanted if exact_title_match else wanted in actual) }}
@@ -407,7 +428,14 @@ actions:
                 {% set ns = namespace(found=false) %}
                 {% set wanted = title_text | trim | lower %}
                 {% for event in schedule_events.get(schedule_calendar, {}).get('events', []) %}
-                  {% set actual = event.summary | default('', true) | trim | lower %}
+                  {% set title = event.summary | default('', true) | string %}
+                  {% if match_after_bracket %}
+                    {% set actual = title.split(']', 1)[1] | trim | lower
+                       if ']' in title else '' %}
+                  {% else %}
+                    {% set actual = title.split('[', 1)[1].split(']', 1)[0] | trim | lower
+                       if '[' in title and ']' in title.split('[', 1)[1] else '' %}
+                  {% endif %}
                   {% set matched = actual == wanted if exact_title_match else wanted in actual %}
                   {% set starts = as_datetime(event.start, none) %}
                   {% set ends = as_datetime(event.end, none) %}

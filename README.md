@@ -8,7 +8,8 @@ events whose titles contain selected text.
 ## What it does
 
 - Watches any Home Assistant calendar, including Google Calendar.
-- Matches calendar titles case-insensitively, either exactly or partially.
+- Separately matches either the text inside `[brackets]` or the text after `]`.
+- Matches the selected title portion case-insensitively, exactly or partially.
 - Provides configurable start, end, pause, and resume actions.
 - Works with vacuums, robot lawnmowers, sprinklers, lights, scenes, scripts,
   and other Home Assistant devices.
@@ -34,6 +35,18 @@ Create one automation from the blueprint for each distinct command:
 Each automation can run completely different Home Assistant actions. For a
 multi-step activity, create a Home Assistant script and select that script as
 the start action.
+
+### Choosing which title part to match
+
+For a calendar title such as `[Rosie] Vacuum`:
+
+- Leave **Search after the closing bracket** off and enter `Rosie` to match the
+  text inside `[ ]`.
+- Turn **Search after the closing bracket** on and enter `Vacuum` to match only
+  the action text after `]`.
+
+Enter only one portion—never `[Rosie] Vacuum`. If exact matching is disabled,
+`Vacuum` also matches action text such as `Vacuum First Floor`.
 
 ## Installation
 
@@ -71,6 +84,11 @@ newer release:
    options. Existing selections are normally retained, while new options use
    their defaults.
 
+> **Version 1.2.0 migration:** Existing automations may retain an older value
+> such as `[Rosie] Vacuum`. Edit each automation after re-importing and change it
+> to one part only, such as `Rosie` or `Vacuum`, then set the new bracket-position
+> toggle accordingly.
+
 You can also paste the original import URL into **Import Blueprint** again:
 
 ```text
@@ -99,7 +117,8 @@ players.
 ## Example: robot lawnmower
 
 - **Schedule calendar:** Weekly Family Schedule
-- **Text:** `[Mower] Mow Front Yard`
+- **Text:** `Mower` with the bracket-position toggle off, or `Mow Front Yard`
+  with the toggle on
 - **Start action:** the mower's start/mow action or a control script
 - **End action:** `lawn_mower.pause` or `lawn_mower.dock`
 - **Pause helper:** an `input_boolean` such as `Mower activity paused`
