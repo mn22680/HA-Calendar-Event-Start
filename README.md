@@ -16,6 +16,10 @@ events whose titles contain selected text.
 - Adds a configurable safety buffer after the meeting ends.
 - Handles overlapping or consecutive meetings.
 - Uses an `input_boolean` helper as a voice-controllable pause/kill switch.
+- Optionally checks whether the device is disabled, has a low battery, or reports
+  a full bin before starting.
+- Can run charging/emptying actions and announce why a scheduled activity was blocked.
+- Can announce a customizable warning before the scheduled action begins.
 
 ## Calendar examples
 
@@ -49,6 +53,35 @@ Manual installation path:
 After importing, open **Settings → Automations & scenes → Blueprints**, locate
 **Calendar text command (pause + work-meeting delay)**, and select **Create
 automation**.
+
+## Updates
+
+The blueprint includes its GitHub `source_url` and displays its current version
+in the description. Home Assistant does not currently auto-update imported
+blueprints. To install a newer release:
+
+1. Open **Settings → Automations & scenes → Blueprints**.
+2. Open this blueprint's three-dot menu.
+3. Select **Re-import blueprint**.
+
+On GitHub, select **Watch → Custom → Releases** to receive release notifications.
+New features, suggestions, and problems can be posted in the repository's
+[Issues](https://github.com/mn22680/HA-Calendar-Event-Start/issues) section.
+
+## Status checks and announcements
+
+Enable **Status Check** to configure any combination of:
+
+- Device enabled/disabled state
+- Numeric battery level and low-battery threshold
+- Full/bin status and the state value that means full
+- Optional low-battery or full handling actions
+
+Enable **Announcements**, select a `tts` provider and one or more speakers, then
+customize the pre-start and failed-check messages. Status failures prevent the
+scheduled start action. The blueprint uses Home Assistant's modern `tts.speak`
+action, making it suitable for Google/Nest speakers and other supported media
+players.
 
 ## Example: robot lawnmower
 

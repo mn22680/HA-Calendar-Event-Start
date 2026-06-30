@@ -1,6 +1,10 @@
 blueprint:
   name: Calendar text command (pause + work-meeting delay)
+  author: mn22680
+  source_url: https://github.com/mn22680/HA-Calendar-Event-Start/blob/main/calendar_text_command.yaml
   description: >-
+    Version 1.1.0
+
     Runs actions when an event whose title contains selected text starts or ends.
     An optional pause helper immediately cancels the current run and executes the
     pause actions. When enabled, work-calendar events containing configured words
@@ -16,6 +20,16 @@ blueprint:
     Assistant and use a Google Home routine to turn it on for your chosen phrase.
     Turning the helper off can optionally resume the activity, but only while the
     matching schedule event is still active.
+
+    ## Notes, updates, and suggestions
+
+    Project: https://github.com/mn22680/HA-Calendar-Event-Start
+
+    Features include calendar title matching, start/end actions, pause and resume,
+    work-meeting delays, device status checks, and Google-speaker announcements.
+    To update, use the blueprint's three-dot menu and choose Re-import blueprint.
+    Please post suggestions and problems to the GitHub Issues page:
+    https://github.com/mn22680/HA-Calendar-Event-Start/issues
   domain: automation
   homeassistant:
     min_version: 2024.10.0
@@ -136,6 +150,172 @@ blueprint:
               unit_of_measurement: min
               mode: slider
 
+    status_section:
+      name: Device status checks
+      icon: mdi:check-decagram-outline
+      collapsed: true
+      input:
+        enable_status_check:
+          name: Enable Status Check
+          description: >-
+            Checks the selected device entities immediately before starting. A
+            failed check blocks the start action and can make an announcement.
+          default: false
+          selector:
+            boolean: {}
+        check_device_enabled:
+          name: Check whether the device is enabled
+          default: false
+          selector:
+            boolean: {}
+        device_enabled_entity:
+          name: Device enabled/status entity
+          description: Optional switch, input_boolean, sensor, or other status entity.
+          default: ""
+          selector:
+            entity: {}
+        device_disabled_state:
+          name: State meaning disabled
+          description: Case-insensitive; commonly off, disabled, or unavailable.
+          default: "off"
+          selector:
+            text: {}
+        disabled_message:
+          name: Disabled announcement
+          default: >-
+            The device is scheduled to run, but it is currently disabled.
+          selector:
+            text:
+              multiline: true
+        check_battery_level:
+          name: Check battery level
+          default: false
+          selector:
+            boolean: {}
+        battery_entity:
+          name: Battery level entity
+          description: Optional numeric battery sensor reporting a percentage.
+          default: ""
+          selector:
+            entity:
+              filter:
+                domain: sensor
+        low_battery_threshold:
+          name: Low battery threshold
+          default: 25
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+              mode: slider
+        low_battery_actions:
+          name: Low battery actions
+          description: Optional, for example send the device to its charger.
+          default: []
+          selector:
+            action: {}
+        low_battery_message:
+          name: Low battery announcement
+          default: >-
+            The device is scheduled to run, but its battery is low. Please charge it.
+          selector:
+            text:
+              multiline: true
+        check_full_status:
+          name: Check whether the device or bin is full
+          default: false
+          selector:
+            boolean: {}
+        full_status_entity:
+          name: Full/bin status entity
+          description: Optional sensor or binary sensor that reports a full state.
+          default: ""
+          selector:
+            entity: {}
+        full_state_value:
+          name: State meaning full
+          description: Case-insensitive; commonly Full or on.
+          default: "Full"
+          selector:
+            text: {}
+        full_actions:
+          name: Full handling actions
+          description: Optional empty-bin action or notification action.
+          default: []
+          selector:
+            action: {}
+        full_message:
+          name: Full announcement
+          default: >-
+            The device is scheduled to run, but its bin is full. Please empty it.
+          selector:
+            text:
+              multiline: true
+
+    announcement_section:
+      name: Announcements
+      icon: mdi:bullhorn-outline
+      collapsed: true
+      input:
+        enable_announcements:
+          name: Enable announcements
+          description: >-
+            Uses Home Assistant's modern tts.speak action for pre-start and failed
+            status-check messages.
+          default: false
+          selector:
+            boolean: {}
+        tts_entity:
+          name: Text-to-speech provider
+          description: For example Google Translate, Piper, or Home Assistant Cloud TTS.
+          default: ""
+          selector:
+            entity:
+              filter:
+                domain: tts
+        announcement_players:
+          name: Speakers
+          description: Select one or more Google/Nest or other media players.
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                domain: media_player
+        pre_start_message:
+          name: Announcement before starting
+          description: The event title is available as {{ event_title }}.
+          default: "The scheduled activity is about to start."
+          selector:
+            text:
+              multiline: true
+        seconds_after_announcement:
+          name: Seconds to wait after the announcement
+          default: 5
+          selector:
+            number:
+              min: 0
+              max: 60
+              step: 1
+              unit_of_measurement: s
+              mode: slider
+
+    project_notes_section:
+      name: Notes, updates, and suggestions
+      icon: mdi:github
+      description: >-
+        **Version 1.1.0**
+
+        Source, release notes, and update notifications:
+        https://github.com/mn22680/HA-Calendar-Event-Start
+
+        To update, open the blueprint's three-dot menu and select **Re-import
+        blueprint**. Please post suggestions and problems to:
+        https://github.com/mn22680/HA-Calendar-Event-Start/issues
+      input: {}
+
 trigger_variables:
   schedule_calendar_var: !input schedule_calendar
   pause_helper_var: !input pause_helper
@@ -168,6 +348,24 @@ variables:
   work_calendar: !input work_calendar
   meeting_keywords_text: !input meeting_keywords
   meeting_buffer_minutes: !input meeting_buffer_minutes
+  enable_status_check: !input enable_status_check
+  check_device_enabled: !input check_device_enabled
+  device_enabled_entity: !input device_enabled_entity
+  device_disabled_state: !input device_disabled_state
+  disabled_message: !input disabled_message
+  check_battery_level: !input check_battery_level
+  battery_entity: !input battery_entity
+  low_battery_threshold: !input low_battery_threshold
+  low_battery_message: !input low_battery_message
+  check_full_status: !input check_full_status
+  full_status_entity: !input full_status_entity
+  full_state_value: !input full_state_value
+  full_message: !input full_message
+  enable_announcements: !input enable_announcements
+  tts_entity: !input tts_entity
+  announcement_players: !input announcement_players
+  pre_start_message: !input pre_start_message
+  seconds_after_announcement: !input seconds_after_announcement
   event_title: >-
     {{ trigger.calendar_event.summary | default('', true) if
        trigger.id in ['schedule_start', 'schedule_end'] else '' }}
@@ -280,6 +478,88 @@ actions:
 
           - condition: template
             value_template: "{{ not is_state(pause_helper, 'on') }}"
+
+          - variables:
+              device_is_disabled: >-
+                {{ enable_status_check and check_device_enabled and
+                   device_enabled_entity | length > 0 and
+                   states(device_enabled_entity) | lower == device_disabled_state | trim | lower }}
+              battery_is_low: >-
+                {{ enable_status_check and check_battery_level and
+                   battery_entity | length > 0 and is_number(states(battery_entity)) and
+                   states(battery_entity) | float(101) < low_battery_threshold | float(25) }}
+              device_is_full: >-
+                {{ enable_status_check and check_full_status and
+                   full_status_entity | length > 0 and
+                   states(full_status_entity) | lower == full_state_value | trim | lower }}
+
+          - choose:
+              - conditions: "{{ device_is_disabled }}"
+                sequence:
+                  - if:
+                      - condition: template
+                        value_template: >-
+                          {{ enable_announcements and tts_entity | length > 0 and
+                             announcement_players | count > 0 }}
+                    then:
+                      - action: tts.speak
+                        target:
+                          entity_id: "{{ tts_entity }}"
+                        data:
+                          media_player_entity_id: "{{ announcement_players }}"
+                          message: "{{ disabled_message }}"
+                  - stop: Device is disabled
+
+              - conditions: "{{ battery_is_low }}"
+                sequence:
+                  - sequence: !input low_battery_actions
+                  - if:
+                      - condition: template
+                        value_template: >-
+                          {{ enable_announcements and tts_entity | length > 0 and
+                             announcement_players | count > 0 }}
+                    then:
+                      - action: tts.speak
+                        target:
+                          entity_id: "{{ tts_entity }}"
+                        data:
+                          media_player_entity_id: "{{ announcement_players }}"
+                          message: >-
+                            {{ low_battery_message }} Current battery level is
+                            {{ states(battery_entity) }} percent.
+                  - stop: Device battery is below the configured threshold
+
+              - conditions: "{{ device_is_full }}"
+                sequence:
+                  - sequence: !input full_actions
+                  - if:
+                      - condition: template
+                        value_template: >-
+                          {{ enable_announcements and tts_entity | length > 0 and
+                             announcement_players | count > 0 }}
+                    then:
+                      - action: tts.speak
+                        target:
+                          entity_id: "{{ tts_entity }}"
+                        data:
+                          media_player_entity_id: "{{ announcement_players }}"
+                          message: "{{ full_message }}"
+                  - stop: Device or bin reports full
+
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ enable_announcements and tts_entity | length > 0 and
+                     announcement_players | count > 0 }}
+            then:
+              - action: tts.speak
+                target:
+                  entity_id: "{{ tts_entity }}"
+                data:
+                  media_player_entity_id: "{{ announcement_players }}"
+                  message: "{{ pre_start_message }}"
+              - delay:
+                  seconds: "{{ seconds_after_announcement | int(5) }}"
           - sequence: !input start_actions
 
 mode: restart
